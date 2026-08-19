@@ -30,6 +30,9 @@ public slots:
     void raiseOverlays();
 
 private:
+    //! 当前键盘焦点是否已经落在某块遮罩窗口上。
+    //! 是的话就不必再抢焦点——反复抢会打断密码输入框的连续输入。
+    bool overlayHasFocus() const;
     void createOverlayFor(QScreen *screen);
     void destroyOverlayFor(QScreen *screen);
 

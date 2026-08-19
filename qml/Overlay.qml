@@ -95,6 +95,15 @@ Window {
             border.color: errorShake.running ? "#c0392b" : "#3a3a3a"
             border.width: 1
 
+            // 万一窗口仍被抢过一次焦点（如显示器热插拔），激活后把焦点还给输入框
+            Connections {
+                target: overlay
+                function onActiveChanged() {
+                    if (overlay.active && unlockPanel.visible)
+                        passwordField.forceActiveFocus()
+                }
+            }
+
             // 输错密码时的抖动提示
             SequentialAnimation {
                 id: errorShake

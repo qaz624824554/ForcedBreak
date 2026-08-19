@@ -20,13 +20,27 @@ namespace {
 
 constexpr auto kOverlayUrl = "qrc:/qt/qml/ForcedBreak/qml/Overlay.qml";
 
-//! Windows 下强行把窗口提到前台。Qt 的 requestActivate() 会受前台锁定限制，
-//! 这里附加线程输入队列后再 SetForegroundWindow，成功率更高。
-void forceForeground(QQuickWindow *window)
+//! 只把窗口钉在 Z 序最顶层，不改变焦点。可安全地对每块遮罩反复调用。
+void keepTopmost(QQuickWindow *window)
 {
 #ifdef Q_OS_WIN
     const auto hwnd = reinterpret_cast<HWND>(window->winId());
     SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#else
+    Q_UNUSED(window);
+#endif
+}
+
+//! Windows 下强行把窗口提到前台并激活。Qt 的 requestActivate() 会受前台锁定限制，
+//! 这里附加线程输入队列后再 SetForegroundWindow，成功率更高。
+//!
+//! 注意：该调用会重置窗口的输入焦点，因此只在焦点确实不在遮罩上时才可使用，
+//! 否则会打断密码输入框的连续输入。
+void forceForeground(QQuickWindow *window)
+{
+#ifdef Q_OS_WIN
+    keepTopmost(window);
+    const auto hwnd = reinterpret_cast<HWND>(window->winId());
 
     const DWORD foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), nullptr);
     const DWORD currentThread = GetCurrentThreadId();
@@ -86,13 +100,37 @@ void OverlayController::hideOverlays()
 
 void OverlayController::raiseOverlays()
 {
+    // 焦点已经在某块遮罩上时只维持置顶、不再抢焦点：
+    // SetForegroundWindow 会重置窗口内的输入焦点，每 500ms 抢一次会让
+    // 密码输入框无法连续输入。
+    const bool focused = overlayHasFocus();
+
+    QQuickWindow *activateTarget = nullptr;
     for (auto it = m_windows.begin(); it != m_windows.end(); ++it) {
         QQuickWindow *window = it.value();
         if (!window)
             continue;
         window->raise();
-        forceForeground(window);
+        keepTopmost(window);
+        // 多屏时只激活一块，否则每轮循环焦点都会跳到最后一块遮罩上
+        if (!activateTarget || it.key() == QGuiApplication::primaryScreen())
+            activateTarget = window;
     }
+
+    if (!focused && activateTarget)
+        forceForeground(activateTarget);
+}
+
+bool OverlayController::overlayHasFocus() const
+{
+    const QWindow *focusWindow = QGuiApplication::focusWindow();
+    if (!focusWindow)
+        return false;
+    for (auto it = m_windows.begin(); it != m_windows.end(); ++it) {
+        if (it.value() == focusWindow)
+            return true;
+    }
+    return false;
 }
 
 void OverlayController::createOverlayFor(QScreen *screen)
@@ -118,7 +156,11 @@ void OverlayController::createOverlayFor(QScreen *screen)
     window->setGeometry(screen->geometry());
     window->show();
     window->raise();
-    forceForeground(window);
+    // 若已有遮罩持有焦点（例如用户正在输密码），新屏只置顶不抢焦点
+    if (overlayHasFocus())
+        keepTopmost(window);
+    else
+        forceForeground(window);
 
     m_windows.insert(screen, window);
 }
