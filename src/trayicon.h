@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QString>
 #include <QSystemTrayIcon>
 
 class AppSettings;
@@ -10,7 +11,7 @@ class QMenu;
 
 /*!
  * 托盘图标与右键菜单。应用没有主窗口，全部交互都从这里发起。
- * tooltip 持续显示距下次休息的剩余时间。
+ * 菜单首项是不可点击的状态行、次项是总开关，tooltip 同步显示相同状态。
  */
 class TrayIcon : public QObject
 {
@@ -32,15 +33,24 @@ public:
 
 signals:
     void breakNowRequested();
+    void resetRequested();
+    void enabledToggled(bool enabled);
     void settingsRequested(int tab);
     void quitRequested();
 
 private:
-    void updateToolTip();
+    //! 按调度器当前状态刷新状态行、开关项与 tooltip。
+    void updateStatus();
+    //! 状态描述文案，状态行与 tooltip 共用。
+    QString statusText() const;
 
     AppSettings *m_settings = nullptr;
     BreakScheduler *m_scheduler = nullptr;
     QSystemTrayIcon m_tray;
     QMenu *m_menu = nullptr;
+    QAction *m_statusAction = nullptr;
+    QAction *m_enabledAction = nullptr;
+    QAction *m_breakNowAction = nullptr;
+    QAction *m_resetAction = nullptr;
     QAction *m_autoStartAction = nullptr;
 };

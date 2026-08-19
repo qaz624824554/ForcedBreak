@@ -58,11 +58,13 @@ int main(int argc, char *argv[])
                      &overlays, &OverlayController::raiseOverlays);
 
     QObject::connect(&tray, &TrayIcon::breakNowRequested, scheduler, &BreakScheduler::triggerBreakNow);
+    QObject::connect(&tray, &TrayIcon::resetRequested, scheduler, &BreakScheduler::resetTimer);
+    QObject::connect(&tray, &TrayIcon::enabledToggled, scheduler, &BreakScheduler::setEnabled);
     QObject::connect(&tray, &TrayIcon::settingsRequested, &settingsWindow, &SettingsWindowManager::open);
     QObject::connect(&tray, &TrayIcon::quitRequested, &app, &QCoreApplication::quit);
 
+    // 总开关默认关闭，不在此处启动计时——由用户从托盘菜单开启
     tray.show();
-    scheduler->start();
 
     return QApplication::exec();
 }

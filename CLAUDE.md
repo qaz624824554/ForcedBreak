@@ -26,7 +26,7 @@ ForcedBreak 是一个基于 Qt 6.10 Quick（CMake 构建，Windows 平台）的*
 BreakScheduler::breakStarted → OverlayController::showOverlays() + InputBlocker::engage()
 InputBlocker::focusStealRequested (每 500ms) → OverlayController::raiseOverlays()
 BreakScheduler::breakEnded   → InputBlocker::disengage() + OverlayController::hideOverlays()
-TrayIcon::breakNowRequested / settingsRequested / quitRequested → 对应槽
+TrayIcon::breakNowRequested / resetRequested / enabledToggled / settingsRequested / quitRequested → 对应槽
 Overlay.qml 密码正确 → BreakScheduler::unlock()（本次休息作废，重开完整工作周期）
 ```
 
@@ -35,7 +35,7 @@ Overlay.qml 密码正确 → BreakScheduler::unlock()（本次休息作废，重
 | 类 | 职责 | 关键约束 |
 |---|---|---|
 | `AppSettings` | QSettings INI 配置读写 | QML 单例。setter 立即落盘；密码为 SHA-256 + 16 字节盐，默认 `123456`；`autoStart` 同步写注册表 `HKCU\...\Run` |
-| `BreakScheduler` | 工作/休息状态机 | QML 单例，`create()` 工厂复用引擎里的 `AppSettings` 单例。计时基于 `QDateTime` **绝对时间戳**而非累加 tick，休眠唤醒后不漂移 |
+| `BreakScheduler` | 工作/休息状态机 | QML 单例，`create()` 工厂复用引擎里的 `AppSettings` 单例。计时基于 `QDateTime` **绝对时间戳**而非累加 tick，休眠唤醒后不漂移。总开关 `enabled` 不持久化、每次启动默认关闭，休息中拒绝关闭（否则是免密码逃逸出口） |
 | `OverlayController` | 每块屏幕一个遮罩窗口 | 监听 `screenAdded/screenRemoved`：休息中新接入的显示器必须立刻补遮罩，否则就是免密码逃逸出口 |
 | `InputBlocker` | Windows 低级键盘钩子 + 周期抢焦点 | 拦截 Alt+Tab / Win / Alt+F4 / Alt+Esc / Ctrl+Esc；Ctrl+Alt+Del 属安全桌面，无法拦截。钩子安装失败时**降级继续**而非中止 |
 | `SettingsWindowManager` | 唯一设置窗口 | 三个托盘菜单项打开同一窗口，只切 Tab（序号见 `TrayIcon::SettingsTab`，须与 `SettingsWindow.qml` 的 TabBar 顺序一致） |

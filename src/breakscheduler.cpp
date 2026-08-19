@@ -14,7 +14,7 @@ BreakScheduler::BreakScheduler(AppSettings *settings, QObject *parent)
 
     // 工作时长在计时途中被修改时，立刻按新时长重新计算剩余时间
     connect(m_settings, &AppSettings::workMinutesChanged, this, [this] {
-        if (!m_breaking)
+        if (m_enabled && !m_breaking)
             onTimeout();
     });
 }
@@ -25,7 +25,26 @@ BreakScheduler *BreakScheduler::create(QQmlEngine *engine, QJSEngine *)
     return new BreakScheduler(settings);
 }
 
-void BreakScheduler::start()
+void BreakScheduler::setEnabled(bool enabled)
+{
+    if (m_enabled == enabled)
+        return;
+    // 休息进行中不允许关闭：那等同于免密码解锁
+    if (!enabled && m_breaking)
+        return;
+
+    m_enabled = enabled;
+    if (m_enabled) {
+        startWorkCycle();
+    } else {
+        m_timer.stop();
+        setWorkRemaining(0);
+        setBreakRemaining(0);
+    }
+    emit enabledChanged();
+}
+
+void BreakScheduler::startWorkCycle()
 {
     m_breaking = false;
     m_phaseStart = QDateTime::currentDateTimeUtc();
@@ -37,8 +56,15 @@ void BreakScheduler::start()
 
 void BreakScheduler::triggerBreakNow()
 {
-    if (!m_breaking)
+    if (m_enabled && !m_breaking)
         beginBreak();
+}
+
+void BreakScheduler::resetTimer()
+{
+    // 休息中重置等同于免密码解锁，必须拒绝
+    if (m_enabled && !m_breaking)
+        startWorkCycle();
 }
 
 void BreakScheduler::unlock()
@@ -84,7 +110,7 @@ void BreakScheduler::endBreak()
     m_breaking = false;
     emit breakEnded();
     // 休息结束（无论自然结束还是密码解锁）都重新开始完整的工作周期
-    start();
+    startWorkCycle();
 }
 
 void BreakScheduler::setBreakRemaining(int seconds)
