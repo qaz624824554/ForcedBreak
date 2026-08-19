@@ -4,7 +4,8 @@ project(ForcedBreak VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+# Widgets 是托盘图标（QSystemTrayIcon/QMenu）的依赖，Qt Quick 无原生托盘支持
+find_package(Qt6 REQUIRED COMPONENTS Quick Widgets)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -15,12 +16,25 @@ endif()
 
 qt_add_executable(appForcedBreak
     main.cpp
+    src/appsettings.h src/appsettings.cpp
+    src/breakscheduler.h src/breakscheduler.cpp
+    src/inputblocker.h src/inputblocker.cpp
+    src/overlaycontroller.h src/overlaycontroller.cpp
+    src/richtextformatter.h src/richtextformatter.cpp
+    src/settingswindowmanager.h src/settingswindowmanager.cpp
+    src/trayicon.h src/trayicon.cpp
 )
+
+# 生成的 qmltyperegistrations.cpp 以 <appsettings.h> 这样的裸文件名包含头文件，
+# 因此 src/ 必须在头文件搜索路径中
+target_include_directories(appForcedBreak PRIVATE src)
 
 qt_add_qml_module(appForcedBreak
     URI ForcedBreak
     QML_FILES
-        Main.qml
+        qml/Overlay.qml
+        qml/SettingsWindow.qml
+        qml/RichTextToolBar.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -35,7 +49,7 @@ set_target_properties(appForcedBreak PROPERTIES
 )
 
 target_link_libraries(appForcedBreak
-    PRIVATE Qt6::Quick
+    PRIVATE Qt6::Quick Qt6::Widgets
 )
 
 install(TARGETS appForcedBreak
