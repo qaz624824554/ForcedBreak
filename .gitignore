@@ -72,7 +72,6 @@ CMakeLists.txt.user*
 # Binaries
 # --------
 *.dll
-*.exe
 
 # Directories with generated files
 .moc/
@@ -82,3 +81,5 @@ CMakeLists.txt.user*
 .uic/
 /build*/
 /.qtcreator/
+
+ForcedBreak/
