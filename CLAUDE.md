@@ -40,7 +40,7 @@ Overlay.qml 密码正确 → BreakScheduler::unlock()（本次休息作废，重
 | `InputBlocker` | Windows 低级键盘钩子 + 周期抢焦点 | 拦截 Alt+Tab / Win / Alt+F4 / Alt+Esc / Ctrl+Esc；Ctrl+Alt+Del 属安全桌面，无法拦截。钩子安装失败时**降级继续**而非中止 |
 | `SettingsWindowManager` | 唯一设置窗口 | 三个托盘菜单项打开同一窗口，只切 Tab（序号见 `TrayIcon::SettingsTab`，须与 `SettingsWindow.qml` 的 TabBar 顺序一致） |
 | `RichTextFormatter` | 桥接 QML TextArea 的 QTextDocument | QML 普通元素（非单例），对当前选区施加字符格式 |
-| `TrayIcon` | 托盘图标与右键菜单 | 图标运行时代码绘制（`TrayIcon::appIcon()`），无图片资源 |
+| `TrayIcon` | 托盘图标与右键菜单 | 图标运行时代码绘制（`TrayIcon::appIcon()`），无图片资源。菜单是 `StayOpenMenu`：带 `forcedBreakStayOpen` 动态属性的项（两个开关、内嵌的工作时长调节行）点击后菜单不关闭。托盘改工作时长必须**先 `emit resetRequested()` 再 `setWorkMinutes()`**，否则调小时长会当场触发休息 |
 
 ### QML 侧（`qml/`）
 

@@ -8,10 +8,15 @@ class AppSettings;
 class BreakScheduler;
 class QAction;
 class QMenu;
+class QSpinBox;
+class QWidgetAction;
 
 /*!
  * 托盘图标与右键菜单。应用没有主窗口，全部交互都从这里发起。
  * 菜单首项是不可点击的状态行、次项是总开关，tooltip 同步显示相同状态。
+ *
+ * 开关类菜单项与工作时长调节行点击后**不关闭菜单**（见 trayicon.cpp 的 StayOpenMenu），
+ * 方便连续调整；跳转类菜单项（立即休息 / 设置… / 退出）仍照常关闭。
  */
 class TrayIcon : public QObject
 {
@@ -33,6 +38,7 @@ public:
 
 signals:
     void breakNowRequested();
+    //! 用户点了「重置计时」，或从托盘快捷改了工作时长（改完重新开始计时）。
     void resetRequested();
     void enabledToggled(bool enabled);
     void settingsRequested(int tab);
@@ -43,6 +49,10 @@ private:
     void updateStatus();
     //! 状态描述文案，状态行与 tooltip 共用。
     QString statusText() const;
+    //! 构造菜单里内嵌的「工作时长 [−][ 45 分钟 ][+]」一行控件。
+    QWidgetAction *createWorkMinutesAction();
+    //! 落盘新的工作时长并重开工作周期；值未变时不做任何事。
+    void applyWorkMinutes(int minutes);
 
     AppSettings *m_settings = nullptr;
     BreakScheduler *m_scheduler = nullptr;
@@ -53,4 +63,6 @@ private:
     QAction *m_breakNowAction = nullptr;
     QAction *m_resetAction = nullptr;
     QAction *m_autoStartAction = nullptr;
+    QWidgetAction *m_workMinutesAction = nullptr;
+    QSpinBox *m_workMinutesSpin = nullptr;
 };
