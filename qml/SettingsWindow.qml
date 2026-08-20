@@ -22,6 +22,7 @@ ApplicationWindow {
 
     header: TabBar {
         id: tabBar
+        onCurrentIndexChanged: root.clearFocus()
         TabButton { text: qsTr("休息时间") }
         TabButton { text: qsTr("显示文案") }
         TabButton { text: qsTr("解锁密码") }
@@ -40,10 +41,28 @@ ApplicationWindow {
         statusTimer.restart()
     }
 
+    // 把焦点交给不可见的收容 Item，输入框随之触发 editingFinished 提交内容
+    function clearFocus() {
+        // 窗口构造期间 TabBar 的 currentIndex 变化会先于 focusSink 创建，需要守卫
+        if (focusSink)
+            focusSink.forceActiveFocus()
+    }
+
     Timer {
         id: statusTimer
         interval: 3000
         onTriggered: statusText.text = ""
+    }
+
+    // 焦点收容器：没有它的话焦点无处可去，输入框会一直保持聚焦
+    Item {
+        id: focusSink
+    }
+
+    // 点击窗口空白处失焦。放在 StackLayout 之前，保证控件本身仍能正常接收点击
+    MouseArea {
+        anchors.fill: parent
+        onPressed: root.clearFocus()
     }
 
     StackLayout {
@@ -68,6 +87,8 @@ ApplicationWindow {
                     value: AppSettings.workMinutes
                     editable: true
                     onValueModified: AppSettings.workMinutes = value
+                    // contentItem 是 TextInput，回车先由它提交数值，这里只负责释放焦点
+                    Component.onCompleted: contentItem.accepted.connect(root.clearFocus)
                 }
                 Label { text: qsTr("分钟（1–480）") }
 
@@ -79,6 +100,8 @@ ApplicationWindow {
                     value: AppSettings.breakSeconds
                     editable: true
                     onValueModified: AppSettings.breakSeconds = value
+                    // contentItem 是 TextInput，回车先由它提交数值，这里只负责释放焦点
+                    Component.onCompleted: contentItem.accepted.connect(root.clearFocus)
                 }
                 Label { text: qsTr("秒（5–3600）") }
 
@@ -90,6 +113,8 @@ ApplicationWindow {
                     value: AppSettings.preNotifySeconds
                     editable: true
                     onValueModified: AppSettings.preNotifySeconds = value
+                    // contentItem 是 TextInput，回车先由它提交数值，这里只负责释放焦点
+                    Component.onCompleted: contentItem.accepted.connect(root.clearFocus)
                 }
                 Label { text: qsTr("秒（0 表示不提醒）") }
             }
@@ -184,6 +209,7 @@ ApplicationWindow {
                     id: oldPassword
                     Layout.preferredWidth: 240
                     echoMode: TextInput.Password
+                    onAccepted: newPassword.forceActiveFocus()
                 }
 
                 Label { text: qsTr("新密码") }
@@ -191,6 +217,7 @@ ApplicationWindow {
                     id: newPassword
                     Layout.preferredWidth: 240
                     echoMode: TextInput.Password
+                    onAccepted: confirmPassword.forceActiveFocus()
                 }
 
                 Label { text: qsTr("确认新密码") }
@@ -198,7 +225,10 @@ ApplicationWindow {
                     id: confirmPassword
                     Layout.preferredWidth: 240
                     echoMode: TextInput.Password
-                    onAccepted: savePasswordButton.clicked()
+                    onAccepted: {
+                        savePasswordButton.clicked()
+                        root.clearFocus()
+                    }
                 }
             }
 
