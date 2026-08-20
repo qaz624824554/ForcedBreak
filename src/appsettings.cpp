@@ -11,6 +11,7 @@ namespace {
 
 constexpr auto kKeyWorkMinutes = "break/workMinutes";
 constexpr auto kKeyBreakSeconds = "break/breakSeconds";
+constexpr auto kKeyPreNotifySeconds = "break/preNotifySeconds";
 constexpr auto kKeyMessageHtml = "message/html";
 constexpr auto kKeyPasswordHash = "security/passwordHash";
 constexpr auto kKeyPasswordSalt = "security/passwordSalt";
@@ -65,6 +66,8 @@ void AppSettings::load()
                              kWorkMinutesMin, kWorkMinutesMax);
     m_breakSeconds = clampInt(m_settings->value(kKeyBreakSeconds, kBreakSecondsDefault).toInt(),
                               kBreakSecondsMin, kBreakSecondsMax);
+    m_preNotifySeconds = clampInt(m_settings->value(kKeyPreNotifySeconds, kPreNotifySecondsDefault).toInt(),
+                                  kPreNotifySecondsMin, kPreNotifySecondsMax);
 
     m_messageHtml = m_settings->value(kKeyMessageHtml).toString();
     if (m_messageHtml.trimmed().isEmpty())
@@ -80,6 +83,7 @@ void AppSettings::load()
     // 首次启动（或字段缺失）时把生效值补齐写回，保证配置文件内容完整可排查
     m_settings->setValue(kKeyWorkMinutes, m_workMinutes);
     m_settings->setValue(kKeyBreakSeconds, m_breakSeconds);
+    m_settings->setValue(kKeyPreNotifySeconds, m_preNotifySeconds);
     m_settings->setValue(kKeyMessageHtml, m_messageHtml);
     m_settings->setValue(kKeyAutoStart, m_autoStart);
     m_settings->sync();
@@ -107,6 +111,17 @@ void AppSettings::setBreakSeconds(int seconds)
     m_settings->setValue(kKeyBreakSeconds, value);
     m_settings->sync();
     emit breakSecondsChanged();
+}
+
+void AppSettings::setPreNotifySeconds(int seconds)
+{
+    const int value = clampInt(seconds, kPreNotifySecondsMin, kPreNotifySecondsMax);
+    if (value == m_preNotifySeconds)
+        return;
+    m_preNotifySeconds = value;
+    m_settings->setValue(kKeyPreNotifySeconds, value);
+    m_settings->sync();
+    emit preNotifySecondsChanged();
 }
 
 void AppSettings::setMessageHtml(const QString &html)

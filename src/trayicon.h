@@ -15,6 +15,8 @@ class QWidgetAction;
  * 托盘图标与右键菜单。应用没有主窗口，全部交互都从这里发起。
  * 菜单首项是不可点击的状态行、次项是总开关，tooltip 同步显示相同状态。
  *
+ * 「暂停计时」是可勾选项：勾上即暂停、取消勾选即继续，与「启用强制休息」的交互一致。
+ *
  * 开关类菜单项与工作时长调节行点击后**不关闭菜单**（见 trayicon.cpp 的 StayOpenMenu），
  * 方便连续调整；跳转类菜单项（立即休息 / 设置… / 退出）仍照常关闭。
  */
@@ -41,6 +43,8 @@ signals:
     //! 用户点了「重置计时」，或从托盘快捷改了工作时长（改完重新开始计时）。
     void resetRequested();
     void enabledToggled(bool enabled);
+    //! 用户勾选/取消勾选了「暂停计时」。
+    void pauseToggled(bool paused);
     void settingsRequested(int tab);
     void quitRequested();
 
@@ -62,6 +66,7 @@ private:
     QAction *m_enabledAction = nullptr;
     QAction *m_breakNowAction = nullptr;
     QAction *m_resetAction = nullptr;
+    QAction *m_pauseAction = nullptr;
     QAction *m_autoStartAction = nullptr;
     QWidgetAction *m_workMinutesAction = nullptr;
     QSpinBox *m_workMinutesSpin = nullptr;

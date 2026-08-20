@@ -57,9 +57,19 @@ int main(int argc, char *argv[])
     QObject::connect(&blocker, &InputBlocker::focusStealRequested,
                      &overlays, &OverlayController::raiseOverlays);
 
+    // 快到点时用托盘气泡提前打个招呼，让用户有时间收尾手头的事
+    QObject::connect(scheduler, &BreakScheduler::preBreakNotice, &app, [&](int remainSec) {
+        const int minutes = remainSec / 60;
+        const QString when = minutes > 0 ? QObject::tr("%1 分钟").arg(minutes)
+                                         : QObject::tr("%1 秒").arg(remainSec);
+        tray.showMessage(QObject::tr("ForcedBreak"),
+                         QObject::tr("还有 %1 就要开始休息了，请准备收尾。").arg(when));
+    });
+
     QObject::connect(&tray, &TrayIcon::breakNowRequested, scheduler, &BreakScheduler::triggerBreakNow);
     QObject::connect(&tray, &TrayIcon::resetRequested, scheduler, &BreakScheduler::resetTimer);
     QObject::connect(&tray, &TrayIcon::enabledToggled, scheduler, &BreakScheduler::setEnabled);
+    QObject::connect(&tray, &TrayIcon::pauseToggled, scheduler, &BreakScheduler::setPaused);
     QObject::connect(&tray, &TrayIcon::settingsRequested, &settingsWindow, &SettingsWindowManager::open);
     QObject::connect(&tray, &TrayIcon::quitRequested, &app, &QCoreApplication::quit);
 

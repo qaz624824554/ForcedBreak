@@ -20,6 +20,7 @@ class AppSettings : public QObject
     QML_SINGLETON
     Q_PROPERTY(int workMinutes READ workMinutes WRITE setWorkMinutes NOTIFY workMinutesChanged)
     Q_PROPERTY(int breakSeconds READ breakSeconds WRITE setBreakSeconds NOTIFY breakSecondsChanged)
+    Q_PROPERTY(int preNotifySeconds READ preNotifySeconds WRITE setPreNotifySeconds NOTIFY preNotifySecondsChanged)
     Q_PROPERTY(QString messageHtml READ messageHtml WRITE setMessageHtml NOTIFY messageHtmlChanged)
     Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
 
@@ -31,6 +32,10 @@ public:
     static constexpr int kBreakSecondsMin = 5;
     static constexpr int kBreakSecondsMax = 3600;
     static constexpr int kBreakSecondsDefault = 300;
+    // 提前提醒量为 0 表示关闭提醒
+    static constexpr int kPreNotifySecondsMin = 0;
+    static constexpr int kPreNotifySecondsMax = 3600;
+    static constexpr int kPreNotifySecondsDefault = 60;
 
     explicit AppSettings(QObject *parent = nullptr);
     ~AppSettings() override;
@@ -40,6 +45,9 @@ public:
 
     int breakSeconds() const { return m_breakSeconds; }
     void setBreakSeconds(int seconds);
+
+    int preNotifySeconds() const { return m_preNotifySeconds; }
+    void setPreNotifySeconds(int seconds);
 
     QString messageHtml() const { return m_messageHtml; }
     void setMessageHtml(const QString &html);
@@ -62,6 +70,7 @@ public:
 signals:
     void workMinutesChanged();
     void breakSecondsChanged();
+    void preNotifySecondsChanged();
     void messageHtmlChanged();
     void autoStartChanged();
 
@@ -74,6 +83,7 @@ private:
     QSettings *m_settings = nullptr;
     int m_workMinutes = kWorkMinutesDefault;
     int m_breakSeconds = kBreakSecondsDefault;
+    int m_preNotifySeconds = kPreNotifySecondsDefault;
     QString m_messageHtml;
     bool m_autoStart = false;
     QByteArray m_passwordSalt;  // 原始字节

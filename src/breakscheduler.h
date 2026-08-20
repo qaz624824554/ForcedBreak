@@ -17,6 +17,10 @@ class QJSEngine;
  *
  * 总开关 enabled 默认关闭且**不持久化**：每次启动程序都需手动开启，
  * 关闭状态下计时器停止，永远不会进入休息。
+ *
+ * paused 同样不持久化：暂停期间工作计时冻结，继续后从冻结处接着走
+ * （实现上把 m_phaseStart 整体后移暂停时长，绝对时间戳的抗漂移特性不受影响）。
+ * 休息进行中拒绝暂停——那等同于免密码解锁。
  */
 class BreakScheduler : public QObject
 {
@@ -25,6 +29,7 @@ class BreakScheduler : public QObject
     QML_SINGLETON
     Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(bool breaking READ isBreaking NOTIFY breakingChanged)
+    Q_PROPERTY(bool paused READ isPaused WRITE setPaused NOTIFY pausedChanged)
     Q_PROPERTY(int breakRemainingSeconds READ breakRemainingSeconds NOTIFY breakRemainingSecondsChanged)
     Q_PROPERTY(int workRemainingSeconds READ workRemainingSeconds NOTIFY workRemainingSecondsChanged)
 
@@ -36,6 +41,7 @@ public:
 
     bool isEnabled() const { return m_enabled; }
     bool isBreaking() const { return m_breaking; }
+    bool isPaused() const { return m_paused; }
     int breakRemainingSeconds() const { return m_breakRemaining; }
     int workRemainingSeconds() const { return m_workRemaining; }
 
@@ -46,6 +52,12 @@ public slots:
      * 休息进行中拒绝关闭——否则它就是绕过密码的逃逸出口。
      */
     void setEnabled(bool enabled);
+    /*!
+     * 暂停/继续工作计时。
+     * 暂停期间剩余时间冻结，继续后接着走；未启用或休息进行中一律无效
+     * ——休息中暂停就是绕过密码的逃逸出口。
+     */
+    void setPaused(bool paused);
     //! 立即进入休息（已启用且处于工作计时中才有效）。
     void triggerBreakNow();
     //! 重置计时：丢弃已累计的工作时间，从头开始一个完整工作周期（休息中无效）。
@@ -55,10 +67,13 @@ public slots:
 
 signals:
     void breakStarted(int totalSec);
+    //! 距本次休息还剩 remainSec 秒（每个工作周期最多发一次）。
+    void preBreakNotice(int remainSec);
     void tick(int remainSec);
     void breakEnded();
     void enabledChanged();
     void breakingChanged();
+    void pausedChanged();
     void breakRemainingSecondsChanged();
     void workRemainingSecondsChanged();
 
@@ -69,12 +84,19 @@ private:
     void beginBreak();
     void endBreak();
     void setBreakRemaining(int seconds);
+    //! 剩余时间进入提前提醒阈值时发一次 preBreakNotice。
+    void maybeEmitPreNotice(int remainSec);
+    //! 解除暂停状态（不调整计时），供开始休息/重开周期/关闭总开关复用。
+    void clearPaused();
     void setWorkRemaining(int seconds);
 
     AppSettings *m_settings = nullptr;
     QTimer m_timer;
     bool m_enabled = false;   //!< 总开关，不持久化，每次启动默认关闭
     bool m_breaking = false;
+    bool m_paused = false;        //!< 暂停标志，不持久化
+    QDateTime m_pauseStart;       //!< 暂停开始的绝对时刻，继续时据此后移 m_phaseStart
+    bool m_preNoticeFired = false; //!< 本工作周期是否已发过提前提醒
     QDateTime m_phaseStart;   //!< 当前阶段（工作或休息）的起始绝对时刻
     int m_breakTotal = 0;     //!< 本次休息的总时长，进入休息时锁定
     int m_breakRemaining = 0;

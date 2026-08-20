@@ -81,13 +81,26 @@ ApplicationWindow {
                     onValueModified: AppSettings.breakSeconds = value
                 }
                 Label { text: qsTr("秒（5–3600）") }
+
+                Label { text: qsTr("提前提醒") }
+                SpinBox {
+                    id: preNotifySpin
+                    from: 0
+                    to: 3600
+                    value: AppSettings.preNotifySeconds
+                    editable: true
+                    onValueModified: AppSettings.preNotifySeconds = value
+                }
+                Label { text: qsTr("秒（0 表示不提醒）") }
             }
 
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 color: "#777777"
-                text: qsTr("修改工作时长会立即按新时长重新计算当前周期的剩余时间。")
+                // 两句分别 qsTr：qsTr 的参数须为字符串字面量，拼接要放在外面
+                text: qsTr("修改工作时长会立即按新时长重新计算当前周期的剩余时间。") + "\n"
+                      + qsTr("提前提醒在距离休息还剩指定秒数时弹出一次托盘通知；提前量不小于工作时长时不提醒。")
             }
 
             Item { Layout.fillHeight: true }

@@ -138,6 +138,11 @@ TrayIcon::TrayIcon(AppSettings *settings, BreakScheduler *scheduler, QObject *pa
     m_resetAction = m_menu->addAction(tr("重置计时"));
     connect(m_resetAction, &QAction::triggered, this, &TrayIcon::resetRequested);
 
+    m_pauseAction = m_menu->addAction(tr("暂停计时"));
+    m_pauseAction->setCheckable(true);
+    m_pauseAction->setProperty(kStayOpenProperty, true);
+    connect(m_pauseAction, &QAction::toggled, this, &TrayIcon::pauseToggled);
+
     m_menu->addSeparator();
 
     QAction *timeSettings = m_menu->addAction(tr("休息时间设置…"));
@@ -167,6 +172,7 @@ TrayIcon::TrayIcon(AppSettings *settings, BreakScheduler *scheduler, QObject *pa
 
     connect(m_scheduler, &BreakScheduler::enabledChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::breakingChanged, this, &TrayIcon::updateStatus);
+    connect(m_scheduler, &BreakScheduler::pausedChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::workRemainingSecondsChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::breakRemainingSecondsChanged, this, &TrayIcon::updateStatus);
     updateStatus();
@@ -194,6 +200,8 @@ QString TrayIcon::statusText() const
         return tr("未启用");
     if (m_scheduler->isBreaking())
         return tr("休息剩余 %1").arg(formatDuration(m_scheduler->breakRemainingSeconds()));
+    if (m_scheduler->isPaused())
+        return tr("已暂停 · 距下次休息 %1").arg(formatDuration(m_scheduler->workRemainingSeconds()));
     return tr("距下次休息 %1").arg(formatDuration(m_scheduler->workRemainingSeconds()));
 }
 
@@ -281,6 +289,13 @@ void TrayIcon::updateStatus()
     m_enabledAction->setEnabled(!breaking);
     m_breakNowAction->setEnabled(enabled && !breaking);
     m_resetAction->setEnabled(enabled && !breaking);
+    // 同上，setChecked 只做状态回显，不应回灌信号
+    {
+        const QSignalBlocker blocker(m_pauseAction);
+        m_pauseAction->setChecked(m_scheduler->isPaused());
+    }
+    // 休息中暂停等同于免密码解锁，调度器会拒绝，这里直接禁用避免误解
+    m_pauseAction->setEnabled(enabled && !breaking);
     // 休息中改工作时长既无效果又会被 resetTimer 拒绝，直接禁用避免误解
     m_workMinutesAction->setEnabled(!breaking);
     m_workMinutesAction->defaultWidget()->setEnabled(!breaking);
