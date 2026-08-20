@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ForcedBreak 是一个基于 Qt 6.10 Quick（CMake 构建，Windows 平台）的**强制休息提醒工具**：
 工作计时到点后在**所有显示器**上弹出全屏黑色遮罩，同时安装键盘钩子阻止用户切走，
-只有输入正确密码或等到倒计时结束才能恢复。程序**没有主窗口**，全部交互从系统托盘发起。
+只有输入正确密码、或等倒计时走完后点击「开始下一轮」才能恢复。程序**没有主窗口**，全部交互从系统托盘发起。
 
 ## 构建与运行
 
@@ -29,6 +29,7 @@ BreakScheduler::breakEnded   → InputBlocker::disengage() + OverlayController::
 BreakScheduler::preBreakNotice → TrayIcon::showMessage()（工作剩余进入提前提醒阈值时发一次托盘气泡）
 TrayIcon::breakNowRequested / resetRequested / enabledToggled / pauseToggled / settingsRequested / quitRequested → 对应槽
 Overlay.qml 密码正确 → BreakScheduler::unlock()（本次休息作废，重开完整工作周期）
+Overlay.qml「开始下一轮」→ BreakScheduler::resumeWork()（休息倒计时归零后才出现）
 ```
 
 ### C++ 侧（`src/`）
@@ -36,7 +37,7 @@ Overlay.qml 密码正确 → BreakScheduler::unlock()（本次休息作废，重
 | 类 | 职责 | 关键约束 |
 |---|---|---|
 | `AppSettings` | QSettings INI 配置读写 | QML 单例。setter 立即落盘；密码为 SHA-256 + 16 字节盐，默认 `123456`；`autoStart` 同步写注册表 `HKCU\...\Run`；`preNotifySeconds` 为提前提醒量，`0` 表示关闭 |
-| `BreakScheduler` | 工作/休息状态机 | QML 单例，`create()` 工厂复用引擎里的 `AppSettings` 单例。计时基于 `QDateTime` **绝对时间戳**而非累加 tick，休眠唤醒后不漂移。总开关 `enabled` 与 `paused` 均不持久化、每次启动默认关闭，休息中拒绝关闭/暂停（否则是免密码逃逸出口）。暂停靠**把 `m_phaseStart` 后移暂停时长**实现，因此恢复后剩余时间接着走且不破坏绝对时间戳设计；暂停期间必须跳过 `workMinutesChanged` 的重算，否则暂停时长会被算进已工作时间。`preBreakNotice` 每个工作周期最多发一次（`m_preNoticeFired`），提前量 ≥ 工作总时长时不发 |
+| `BreakScheduler` | 工作/休息状态机 | QML 单例，`create()` 工厂复用引擎里的 `AppSettings` 单例。计时基于 `QDateTime` **绝对时间戳**而非累加 tick，休眠唤醒后不漂移。总开关 `enabled` 与 `paused` 均不持久化、每次启动默认关闭，休息中拒绝关闭/暂停（否则是免密码逃逸出口）。暂停靠**把 `m_phaseStart` 后移暂停时长**实现，因此恢复后剩余时间接着走且不破坏绝对时间戳设计；暂停期间必须跳过 `workMinutesChanged` 的重算，否则暂停时长会被算进已工作时间。`preBreakNotice` 每个工作周期最多发一次（`m_preNoticeFired`），提前量 ≥ 工作总时长时不发。休息倒计时归零**不自动结束**，而是停表进入 `awaitingResume` 等待态（仍属 `breaking`，遮罩与钩子不撤），只有 `resumeWork()` 或密码 `unlock()` 才真正结束休息 |
 | `OverlayController` | 每块屏幕一个遮罩窗口 | 监听 `screenAdded/screenRemoved`：休息中新接入的显示器必须立刻补遮罩，否则就是免密码逃逸出口 |
 | `InputBlocker` | Windows 低级键盘钩子 + 周期抢焦点 | 拦截 Alt+Tab / Win / Alt+F4 / Alt+Esc / Ctrl+Esc；Ctrl+Alt+Del 属安全桌面，无法拦截。钩子安装失败时**降级继续**而非中止 |
 | `SettingsWindowManager` | 唯一设置窗口 | 三个托盘菜单项打开同一窗口，只切 Tab（序号见 `TrayIcon::SettingsTab`，须与 `SettingsWindow.qml` 的 TabBar 顺序一致） |

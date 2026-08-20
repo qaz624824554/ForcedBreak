@@ -21,6 +21,10 @@ class QJSEngine;
  * paused 同样不持久化：暂停期间工作计时冻结，继续后从冻结处接着走
  * （实现上把 m_phaseStart 整体后移暂停时长，绝对时间戳的抗漂移特性不受影响）。
  * 休息进行中拒绝暂停——那等同于免密码解锁。
+ *
+ * 休息倒计时归零后不会自动结束，而是进入 awaitingResume 等待态：
+ * 遮罩与键盘钩子保持不动，直到用户点击遮罩上的「开始下一轮」按钮
+ * （resumeWork()）才结束休息、重开工作周期。
  */
 class BreakScheduler : public QObject
 {
@@ -30,6 +34,7 @@ class BreakScheduler : public QObject
     Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(bool breaking READ isBreaking NOTIFY breakingChanged)
     Q_PROPERTY(bool paused READ isPaused WRITE setPaused NOTIFY pausedChanged)
+    Q_PROPERTY(bool awaitingResume READ isAwaitingResume NOTIFY awaitingResumeChanged)
     Q_PROPERTY(int breakRemainingSeconds READ breakRemainingSeconds NOTIFY breakRemainingSecondsChanged)
     Q_PROPERTY(int workRemainingSeconds READ workRemainingSeconds NOTIFY workRemainingSecondsChanged)
 
@@ -42,6 +47,7 @@ public:
     bool isEnabled() const { return m_enabled; }
     bool isBreaking() const { return m_breaking; }
     bool isPaused() const { return m_paused; }
+    bool isAwaitingResume() const { return m_awaitingResume; }
     int breakRemainingSeconds() const { return m_breakRemaining; }
     int workRemainingSeconds() const { return m_workRemaining; }
 
@@ -64,6 +70,11 @@ public slots:
     void resetTimer();
     //! 密码校验通过后提前结束休息；本次休息作废，重新开始完整工作周期。
     void unlock();
+    /*!
+     * 休息倒计时已归零、用户点击「开始下一轮」后结束休息并重开工作周期。
+     * 仅在 awaitingResume 为真时有效——否则它就是绕过倒计时的逃逸出口。
+     */
+    void resumeWork();
 
 signals:
     void breakStarted(int totalSec);
@@ -74,6 +85,7 @@ signals:
     void enabledChanged();
     void breakingChanged();
     void pausedChanged();
+    void awaitingResumeChanged();
     void breakRemainingSecondsChanged();
     void workRemainingSecondsChanged();
 
@@ -82,7 +94,10 @@ private:
     void startWorkCycle();
     void onTimeout();
     void beginBreak();
+    //! 休息倒计时归零：停表进入等待态，遮罩与钩子保持不动。
+    void beginAwaitingResume();
     void endBreak();
+    void setAwaitingResume(bool awaiting);
     void setBreakRemaining(int seconds);
     //! 剩余时间进入提前提醒阈值时发一次 preBreakNotice。
     void maybeEmitPreNotice(int remainSec);
@@ -96,6 +111,7 @@ private:
     bool m_breaking = false;
     bool m_paused = false;        //!< 暂停标志，不持久化
     QDateTime m_pauseStart;       //!< 暂停开始的绝对时刻，继续时据此后移 m_phaseStart
+    bool m_awaitingResume = false; //!< 休息已满、等待用户点击「开始下一轮」（休息中的子状态）
     bool m_preNoticeFired = false; //!< 本工作周期是否已发过提前提醒
     QDateTime m_phaseStart;   //!< 当前阶段（工作或休息）的起始绝对时刻
     int m_breakTotal = 0;     //!< 本次休息的总时长，进入休息时锁定

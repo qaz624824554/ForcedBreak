@@ -101,6 +101,13 @@ void BreakScheduler::unlock()
         endBreak();
 }
 
+void BreakScheduler::resumeWork()
+{
+    // 只认等待态：倒计时未满时按钮不出现，从别处调用也不该放行
+    if (m_awaitingResume)
+        endBreak();
+}
+
 void BreakScheduler::onTimeout()
 {
     const qint64 elapsed = m_phaseStart.secsTo(QDateTime::currentDateTimeUtc());
@@ -109,8 +116,9 @@ void BreakScheduler::onTimeout()
         const int remain = static_cast<int>(m_breakTotal - elapsed);
         setBreakRemaining(qMax(0, remain));
         emit tick(m_breakRemaining);
+        // 倒计时归零不自动结束，改为等待用户点击「开始下一轮」
         if (remain <= 0)
-            endBreak();
+            beginAwaitingResume();
     } else {
         const int remain = static_cast<int>(m_settings->workMinutes() * 60 - elapsed);
         setWorkRemaining(qMax(0, remain));
@@ -126,6 +134,7 @@ void BreakScheduler::onTimeout()
 void BreakScheduler::beginBreak()
 {
     m_breaking = true;
+    setAwaitingResume(false);
     clearPaused();
     m_phaseStart = QDateTime::currentDateTimeUtc();
     m_breakTotal = m_settings->breakSeconds();
@@ -137,9 +146,17 @@ void BreakScheduler::beginBreak()
     emit tick(m_breakRemaining);
 }
 
+void BreakScheduler::beginAwaitingResume()
+{
+    // 停表即可：遮罩与键盘钩子的拆除只由 breakEnded 触发，此处不动它们
+    m_timer.stop();
+    setAwaitingResume(true);
+}
+
 void BreakScheduler::endBreak()
 {
     m_breaking = false;
+    setAwaitingResume(false);
     emit breakEnded();
     // 休息结束（无论自然结束还是密码解锁）都重新开始完整的工作周期
     startWorkCycle();
@@ -159,6 +176,14 @@ void BreakScheduler::maybeEmitPreNotice(int remainSec)
 
     m_preNoticeFired = true;
     emit preBreakNotice(remainSec);
+}
+
+void BreakScheduler::setAwaitingResume(bool awaiting)
+{
+    if (m_awaitingResume == awaiting)
+        return;
+    m_awaitingResume = awaiting;
+    emit awaitingResumeChanged();
 }
 
 void BreakScheduler::clearPaused()

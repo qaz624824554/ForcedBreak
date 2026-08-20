@@ -4,6 +4,7 @@ import QtQuick.Window
 import ForcedBreak
 
 // 单块屏幕的全屏遮罩：纯黑背景、居中富文本文案、倒计时、右下角"跳过"按钮。
+// 倒计时归零后进入等待态：底部居中出现「开始下一轮」按钮，点击才结束休息。
 // 窗口的 screen 与 geometry 由 OverlayController 在 C++ 侧设定。
 Window {
     id: overlay
@@ -41,10 +42,12 @@ Window {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: overlay.remainText
+                // 等待态下倒计时已无意义，换成一句提示，与计时状态明确区分
+                text: BreakScheduler.awaitingResume ? qsTr("休息结束") : overlay.remainText
                 color: "#8a8a8a"
                 font.pixelSize: 40
-                font.family: "Consolas"
+                // 等宽字体只用于跳动的数字，文案回落到系统默认字体
+                font.family: BreakScheduler.awaitingResume ? Qt.application.font.family : "Consolas"
             }
         }
 
@@ -54,7 +57,8 @@ Window {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: 24
-            visible: !unlockPanel.visible
+            // 等待态下已有「开始下一轮」按钮，密码跳过失去意义
+            visible: !unlockPanel.visible && !BreakScheduler.awaitingResume
             text: qsTr("跳过")
             flat: true
             opacity: hovered ? 0.9 : 0.35
@@ -81,6 +85,31 @@ Window {
             }
         }
 
+        // 休息时长走完后才出现的主按钮：点击结束休息、开始下一轮工作计时
+        Button {
+            id: resumeButton
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 72
+            visible: BreakScheduler.awaitingResume
+            text: qsTr("开始下一轮")
+            onClicked: BreakScheduler.resumeWork()
+
+            contentItem: Text {
+                text: resumeButton.text
+                color: "black"
+                font.pixelSize: 20
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            background: Rectangle {
+                color: resumeButton.down ? "#cccccc" : (resumeButton.hovered ? "#ffffff" : "#e6e6e6")
+                radius: 6
+                implicitWidth: 240
+                implicitHeight: 56
+            }
+        }
+
         // 密码解锁面板
         Rectangle {
             id: unlockPanel
@@ -101,6 +130,15 @@ Window {
                 function onActiveChanged() {
                     if (overlay.active && unlockPanel.visible)
                         passwordField.forceActiveFocus()
+                }
+            }
+
+            // 输密码的过程中倒计时走完：收起面板，让位给「开始下一轮」按钮
+            Connections {
+                target: BreakScheduler
+                function onAwaitingResumeChanged() {
+                    if (BreakScheduler.awaitingResume)
+                        unlockPanel.visible = false
                 }
             }
 

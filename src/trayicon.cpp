@@ -172,6 +172,7 @@ TrayIcon::TrayIcon(AppSettings *settings, BreakScheduler *scheduler, QObject *pa
 
     connect(m_scheduler, &BreakScheduler::enabledChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::breakingChanged, this, &TrayIcon::updateStatus);
+    connect(m_scheduler, &BreakScheduler::awaitingResumeChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::pausedChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::workRemainingSecondsChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::breakRemainingSecondsChanged, this, &TrayIcon::updateStatus);
@@ -198,8 +199,12 @@ QString TrayIcon::statusText() const
 {
     if (!m_scheduler->isEnabled())
         return tr("未启用");
-    if (m_scheduler->isBreaking())
+    if (m_scheduler->isBreaking()) {
+        // 等待态下倒计时恒为 0，显示剩余时间会让人误以为卡住了
+        if (m_scheduler->isAwaitingResume())
+            return tr("休息结束 · 待点击继续");
         return tr("休息剩余 %1").arg(formatDuration(m_scheduler->breakRemainingSeconds()));
+    }
     if (m_scheduler->isPaused())
         return tr("已暂停 · 距下次休息 %1").arg(formatDuration(m_scheduler->workRemainingSeconds()));
     return tr("距下次休息 %1").arg(formatDuration(m_scheduler->workRemainingSeconds()));
