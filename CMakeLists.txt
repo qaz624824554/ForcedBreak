@@ -5,7 +5,8 @@ project(ForcedBreak VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Widgets 是托盘图标（QSystemTrayIcon/QMenu）的依赖，Qt Quick 无原生托盘支持
-find_package(Qt6 REQUIRED COMPONENTS Quick Widgets)
+# Svg 用于把 assets/icons 下的矢量图标渲染成托盘/应用图标
+find_package(Qt6 REQUIRED COMPONENTS Quick Widgets Svg)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -25,9 +26,25 @@ qt_add_executable(ForcedBreak
     src/trayicon.h src/trayicon.cpp
 )
 
+# Windows 下把 .ico 编进 exe，资源管理器与桌面快捷方式才有图标。
+# project() 只声明了 CXX，Ninja/Makefile 生成器下必须显式启用 RC 才会调 windres
+if (WIN32)
+    enable_language(RC)
+    target_sources(ForcedBreak PRIVATE assets/app.rc)
+endif()
+
 # 生成的 qmltyperegistrations.cpp 以 <appsettings.h> 这样的裸文件名包含头文件，
 # 因此 src/ 必须在头文件搜索路径中
 target_include_directories(ForcedBreak PRIVATE src)
+
+# 图标以 SVG 形式打进二进制，运行时按需渲染到各尺寸（见 TrayIcon::appIcon）
+qt_add_resources(ForcedBreak "icons"
+    PREFIX "/icons"
+    BASE assets/icons
+    FILES
+        assets/icons/app.svg
+        assets/icons/tray-cup.svg
+)
 
 qt_add_qml_module(ForcedBreak
     URI ForcedBreak
@@ -49,7 +66,7 @@ set_target_properties(ForcedBreak PROPERTIES
 )
 
 target_link_libraries(ForcedBreak
-    PRIVATE Qt6::Quick Qt6::Widgets
+    PRIVATE Qt6::Quick Qt6::Widgets Qt6::Svg
 )
 
 install(TARGETS ForcedBreak

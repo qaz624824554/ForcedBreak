@@ -42,7 +42,7 @@ Overlay.qml「开始下一轮」→ BreakScheduler::resumeWork()（休息倒计�
 | `InputBlocker` | Windows 低级键盘钩子 + 周期抢焦点 | 拦截 Alt+Tab / Win / Alt+F4 / Alt+Esc / Ctrl+Esc；Ctrl+Alt+Del 属安全桌面，无法拦截。钩子安装失败时**降级继续**而非中止 |
 | `SettingsWindowManager` | 唯一设置窗口 | 三个托盘菜单项打开同一窗口，只切 Tab（序号见 `TrayIcon::SettingsTab`，须与 `SettingsWindow.qml` 的 TabBar 顺序一致） |
 | `RichTextFormatter` | 桥接 QML TextArea 的 QTextDocument | QML 普通元素（非单例），对当前选区施加字符格式 |
-| `TrayIcon` | 托盘图标与右键菜单 | 图标运行时代码绘制（`TrayIcon::appIcon()`），无图片资源。菜单是 `StayOpenMenu`：带 `forcedBreakStayOpen` 动态属性的项（三个可勾选项、内嵌的工作时长调节行）点击后菜单不关闭。「暂停计时」为可勾选项，勾上即暂停、取消即继续。托盘改工作时长必须**先 `emit resetRequested()` 再 `setWorkMinutes()`**，否则调小时长会当场触发休息 |
+| `TrayIcon` | 托盘图标与右键菜单 | 图标来自 `assets/icons/` 下的 SVG（`:/icons/app.svg` 应用图标、`:/icons/tray-cup.svg` 托盘图标），由 `renderSvgIcon()` 用 `QSvgRenderer` 逐尺寸渲染成 `QIcon`——不走 `QIcon(":/x.svg")`，那条路依赖 qtsvg 图标引擎插件。托盘图标按状态整体着色（灰=未启用 / 蓝=工作 / 橙=暂停 / 绿=休息），`updateStatus()` 里只在状态真正变化时 `setIcon`。exe 自身的图标由 `assets/app.rc` + `assets/icons/forcedbreak.ico` 提供（`.gitignore` 里为 `app.rc` 加了 `!` 例外）。菜单是 `StayOpenMenu`：带 `forcedBreakStayOpen` 动态属性的项（三个可勾选项、内嵌的工作时长调节行）点击后菜单不关闭。「暂停计时」为可勾选项，勾上即暂停、取消即继续。托盘改工作时长必须**先 `emit resetRequested()` 再 `setWorkMinutes()`**，否则调小时长会当场触发休息 |
 
 ### QML 侧（`qml/`）
 

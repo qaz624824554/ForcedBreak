@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QStringLiteral("ForcedBreak"));
     // 没有主窗口，设置窗口关闭后不应退出程序
     QApplication::setQuitOnLastWindowClosed(false);
+    // 设置窗口等顶层窗口的标题栏/任务栏图标（exe 自身的图标由 assets/app.rc 提供）
+    QApplication::setWindowIcon(TrayIcon::appIcon());
 
     // 单实例保护：两份程序会产生两套互相冲突的计时器
     QSharedMemory singleInstance(QStringLiteral("ForcedBreak-SingleInstance"));

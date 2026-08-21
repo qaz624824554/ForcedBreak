@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- 桌面/exe 图标：深蓝圆角底 + 奶白咖啡杯，表意"停下来休息一会" -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3E6EA8"/>
+      <stop offset="1" stop-color="#1E2F4A"/>
+    </linearGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E2DED2"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="url(#bg)"/>
+
+  <!-- 整组内容按视觉重心居中：组内坐标以杯身中轴为 x=0、杯口为 y=0 -->
+  <g transform="translate(128,128) scale(1.12) translate(-6.5,-13.5)">
+    <!-- 热气：三缕，透明度低于杯身，缩到 16px 时自然淡出不糊成一团 -->
+    <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" opacity="0.5">
+      <path d="M-26,-14 C-36,-28 -16,-38 -26,-52 C-32,-60 -28,-66 -26,-70"/>
+      <path d="M0,-20 C-10,-34 10,-44 0,-58 C-6,-66 -2,-72 0,-76"/>
+      <path d="M26,-14 C16,-28 36,-38 26,-52 C20,-60 24,-66 26,-70"/>
+    </g>
+
+    <!-- 杯柄画在杯身之下，被杯身盖住内侧一截，接缝更自然 -->
+    <path d="M46,12 C86,12 86,54 46,54" fill="none" stroke="#F4F1E9"
+          stroke-width="15" stroke-linecap="round"/>
+
+    <!-- 杯身：上宽下窄的梯形，底部两角收圆 -->
+    <path d="M-49,0 L49,0 L36,66 Q34,72 28,72 L-28,72 Q-34,72 -36,66 Z" fill="url(#cup)"/>
+    <!-- 杯口的咖啡液面 -->
+    <ellipse cx="0" cy="0" rx="49" ry="11" fill="#C0803A"/>
+    <ellipse cx="0" cy="-1.5" rx="41" ry="7.5" fill="#8A5424" opacity="0.55"/>
+
+    <!-- 杯托 -->
+    <ellipse cx="0" cy="86" rx="72" ry="12" fill="url(#cup)"/>
+  </g>
+</svg>

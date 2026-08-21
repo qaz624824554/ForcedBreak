@@ -22,6 +22,8 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
+; 安装向导与"添加/删除程序"里显示的图标，与 exe 内嵌的是同一个
+SetupIconFile={#SourceCodeDir}\assets\icons\forcedbreak.ico
 
 [Languages]
 Name: "chinese"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"

@@ -11,10 +11,12 @@
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QColor>
 #include <QPainter>
 #include <QPixmap>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QSvgRenderer>
 #include <QToolButton>
 #include <QWidget>
 #include <QWidgetAction>
@@ -25,6 +27,43 @@ constexpr int kWorkMinutesStep = 5;
 
 //! 动态属性名：带此标记的 QAction 点击后菜单保持打开。
 constexpr char kStayOpenProperty[] = "forcedBreakStayOpen";
+
+/*!
+ * 把 SVG 渲染成多尺寸 QIcon。
+ *
+ * 不直接用 QIcon(":/xxx.svg")：那条路依赖 qtsvg 的图标引擎插件，
+ * 部署时漏掉插件就是一个空图标；这里自己渲染，只依赖已链接的 Qt6::Svg。
+ *
+ * tint 有效时对渲染结果整体着色：SourceIn 只换颜色、保留形状的抗锯齿与
+ * 半透明层次，所以 SVG 里画淡的热气着色后依然比杯身淡。
+ *
+ * 渲染结果不缓存：图标只在状态切换与弹气泡时取，这点开销远小于把 QPixmap
+ * 存进函数静态变量的代价——那样它会在 QApplication 析构之后才销毁。
+ */
+QIcon renderSvgIcon(const QString &resourcePath, const QColor &tint = QColor())
+{
+    // 托盘取 16/20/24/32，桌面与气泡取大尺寸，逐一渲染而非缩放，各尺寸都清晰
+    static constexpr int kSizes[] = {16, 20, 24, 32, 48, 64, 128, 256};
+
+    QSvgRenderer renderer(resourcePath);
+    QIcon icon;
+    for (int size : kSizes) {
+        QPixmap pixmap(size, size);
+        pixmap.fill(Qt::transparent);
+
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        renderer.render(&painter);
+        if (tint.isValid()) {
+            painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            painter.fillRect(pixmap.rect(), tint);
+        }
+        painter.end();
+
+        icon.addPixmap(pixmap);
+    }
+    return icon;
+}
 
 //! 把秒数格式化为 mm:ss。
 QString formatDuration(int seconds)
@@ -168,7 +207,7 @@ TrayIcon::TrayIcon(AppSettings *settings, BreakScheduler *scheduler, QObject *pa
     connect(quit, &QAction::triggered, this, &TrayIcon::quitRequested);
 
     m_tray.setContextMenu(m_menu);
-    m_tray.setIcon(appIcon());
+    // 图标由 updateStatus 按当前状态设置
 
     connect(m_scheduler, &BreakScheduler::enabledChanged, this, &TrayIcon::updateStatus);
     connect(m_scheduler, &BreakScheduler::breakingChanged, this, &TrayIcon::updateStatus);
@@ -305,26 +344,44 @@ void TrayIcon::updateStatus()
     m_workMinutesAction->setEnabled(!breaking);
     m_workMinutesAction->defaultWidget()->setEnabled(!breaking);
 
+    TrayState state = TrayState::Working;
+    if (!enabled)
+        state = TrayState::Disabled;
+    else if (breaking)
+        state = TrayState::Breaking;
+    else if (m_scheduler->isPaused())
+        state = TrayState::Paused;
+    // 状态每秒刷新，图标却只在状态真正变化时重设：反复 setIcon 会让托盘闪烁
+    if (m_trayState != state) {
+        m_trayState = state;
+        m_tray.setIcon(trayIcon(state));
+    }
+
     m_tray.setToolTip(tr("ForcedBreak — %1").arg(statusText()));
 }
 
 QIcon TrayIcon::appIcon()
 {
-    // 运行时绘制图标，省去二进制资源文件
-    QPixmap pixmap(64, 64);
-    pixmap.fill(Qt::transparent);
+    return renderSvgIcon(QStringLiteral(":/icons/app.svg"));
+}
 
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(0x2d, 0x7d, 0xd2));
-    painter.drawEllipse(2, 2, 60, 60);
-
-    // 中间一个白色暂停符号，表意"休息"
-    painter.setBrush(Qt::white);
-    painter.drawRoundedRect(20, 18, 8, 28, 3, 3);
-    painter.drawRoundedRect(36, 18, 8, 28, 3, 3);
-    painter.end();
-
-    return QIcon(pixmap);
+QIcon TrayIcon::trayIcon(TrayState state)
+{
+    // 托盘背景深浅取决于用户主题，四种颜色都取中等明度，浅色与深色任务栏上都看得清
+    QColor color;
+    switch (state) {
+    case TrayState::Disabled:
+        color = QColor(0x9a, 0xa0, 0xa6);  // 灰：未启用
+        break;
+    case TrayState::Working:
+        color = QColor(0x2d, 0x7d, 0xd2);  // 蓝：工作计时中
+        break;
+    case TrayState::Paused:
+        color = QColor(0xe0, 0x95, 0x2f);  // 橙：已暂停
+        break;
+    case TrayState::Breaking:
+        color = QColor(0x35, 0xa0, 0x6a);  // 绿：休息中
+        break;
+    }
+    return renderSvgIcon(QStringLiteral(":/icons/tray-cup.svg"), color);
 }

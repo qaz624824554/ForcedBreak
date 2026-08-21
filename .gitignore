@@ -32,6 +32,8 @@ qrc_*.cpp
 Thumbs.db
 *.res
 *.rc
+# 应用图标的资源脚本是手写的源文件，不属于上面那条规则要排除的生成物
+!assets/app.rc
 /.qmake.cache
 /.qmake.stash
 **/.qmlls.ini

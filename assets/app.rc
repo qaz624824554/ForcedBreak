@@ -1,0 +1,3 @@
+/* Windows 资源脚本：给 exe 挂上应用图标（资源管理器、任务栏、快捷方式都取这里）。
+   路径相对本文件所在目录。IDI_ICON1 是 Windows 取"程序主图标"时用的第一个图标资源。 */
+IDI_ICON1 ICON "icons/forcedbreak.ico"

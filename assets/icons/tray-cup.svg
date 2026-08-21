@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- 托盘图标：单色剪影，运行时按状态整体着色（见 TrayIcon::trayIcon）。
+       这里只用黑色与透明度区分主次，透明度会在着色时保留。 -->
+  <!-- 整体右移一点：杯柄只在右侧，不补偿的话视觉重心会偏左 -->
+  <g fill="#000000" stroke="#000000" transform="translate(1.3,0)">
+    <!-- 热气：半透明，避免 16px 下与杯身糊在一起 -->
+    <g fill="none" stroke-width="2.2" stroke-linecap="round" opacity="0.55">
+      <path d="M11,9 C9,6.5 13,5 11,2.5"/>
+      <path d="M17,9 C15,6.5 19,5 17,2.5"/>
+    </g>
+    <!-- 杯柄 -->
+    <path d="M22,15 C26.5,15 26.5,21.5 22,21.5" fill="none" stroke-width="2.6"
+          stroke-linecap="round"/>
+    <!-- 杯身 -->
+    <path d="M4.5,12.5 L22,12.5 L20,24 Q19.4,26.5 16.8,26.5 L9.7,26.5 Q7.1,26.5 6.5,24 Z"
+          stroke="none"/>
+    <!-- 杯托 -->
+    <ellipse cx="13.25" cy="28.8" rx="11" ry="1.9" stroke="none"/>
+  </g>
+</svg>

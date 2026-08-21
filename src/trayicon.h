@@ -4,6 +4,8 @@
 #include <QString>
 #include <QSystemTrayIcon>
 
+#include <optional>
+
 class AppSettings;
 class BreakScheduler;
 class QAction;
@@ -25,6 +27,14 @@ class TrayIcon : public QObject
     Q_OBJECT
 
 public:
+    //! 托盘图标的状态配色，一眼能看出计时器眼下在干什么。
+    enum class TrayState {
+        Disabled,  //!< 未启用
+        Working,   //!< 工作计时中
+        Paused,    //!< 已暂停
+        Breaking,  //!< 休息中
+    };
+
     //! 设置窗口的 Tab 序号，与 SettingsWindow.qml 中的 TabBar 顺序一致。
     enum SettingsTab { TimeTab = 0, MessageTab = 1, PasswordTab = 2 };
     Q_ENUM(SettingsTab)
@@ -35,8 +45,10 @@ public:
     void show();
     void showMessage(const QString &title, const QString &text);
 
-    //! 运行时绘制的应用图标（托盘与气泡提示共用）。
+    //! 应用图标（设置窗口、气泡提示与单实例提示共用），由 :/icons/app.svg 渲染。
     static QIcon appIcon();
+    //! 对应状态的托盘图标，由 :/icons/tray-cup.svg 渲染后整体着色。
+    static QIcon trayIcon(TrayState state);
 
 signals:
     void breakNowRequested();
@@ -57,6 +69,9 @@ private:
     QWidgetAction *createWorkMinutesAction();
     //! 落盘新的工作时长并重开工作周期；值未变时不做任何事。
     void applyWorkMinutes(int minutes);
+
+    //! 当前托盘图标状态；每秒刷新一次状态，图标只在真正变化时重设，避免托盘闪烁。
+    std::optional<TrayState> m_trayState;
 
     AppSettings *m_settings = nullptr;
     BreakScheduler *m_scheduler = nullptr;
