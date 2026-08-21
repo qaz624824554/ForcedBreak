@@ -1,5 +1,5 @@
 #define MyAppName "ForcedBreak"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "Leon Chen"
 #define MyAppExeName "ForcedBreak.exe"
 #define SourceCodeDir "C:\Users\Leon\Documents\Codes\Company\ForcedBreak"
